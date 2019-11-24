@@ -216,6 +216,8 @@ func writeToTar(t util.Tar, files, whiteouts []string) error {
 	return nil
 }
 
+var FilesWithParentDirs = filesWithParentDirs
+
 func filesWithParentDirs(files []string) []string {
 	filesSet := map[string]bool{}
 
