@@ -69,17 +69,25 @@ var volumes = []string{}
 
 var excluded []string
 
-// GetFSFromImage extracts the layers of img to root
-// It returns a list of all files extracted
 func GetFSFromImage(root string, img v1.Image) ([]string, error) {
-	if err := DetectFilesystemWhitelist(constants.WhitelistPath); err != nil {
-		return nil, err
-	}
-	logrus.Debugf("Mounted directories: %v", whitelist)
 	layers, err := img.Layers()
 	if err != nil {
 		return nil, err
 	}
+
+	return GetFSFromLayers(root, layers, ExtractFile)
+}
+
+type ExtractFunction func(string, *tar.Header, io.Reader) error
+
+// GetFSFromLayers extracts the layers to root
+// It returns a list of all files extracted
+func GetFSFromLayers(root string, layers []v1.Layer, extract ExtractFunction) ([]string, error) {
+	if err := DetectFilesystemWhitelist(constants.WhitelistPath); err != nil {
+		return nil, err
+	}
+	logrus.Debugf("Mounted directories: %v", whitelist)
+
 	extractedFiles := []string{}
 
 	for i, l := range layers {
@@ -114,7 +122,7 @@ func GetFSFromImage(root string, img v1.Image) ([]string, error) {
 				}
 				continue
 			}
-			if err := extractFile(root, hdr, tr); err != nil {
+			if err := extract(root, hdr, tr); err != nil {
 				return nil, err
 			}
 			extractedFiles = append(extractedFiles, filepath.Join(root, filepath.Clean(hdr.Name)))
@@ -179,7 +187,7 @@ func unTar(r io.Reader, dest string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := extractFile(dest, hdr, tr); err != nil {
+		if err := ExtractFile(dest, hdr, tr); err != nil {
 			return nil, err
 		}
 		extractedFiles = append(extractedFiles, dest)
@@ -187,7 +195,7 @@ func unTar(r io.Reader, dest string) ([]string, error) {
 	return extractedFiles, nil
 }
 
-func extractFile(dest string, hdr *tar.Header, tr io.Reader) error {
+func ExtractFile(dest string, hdr *tar.Header, tr io.Reader) error {
 	path := filepath.Join(dest, filepath.Clean(hdr.Name))
 	base := filepath.Base(path)
 	dir := filepath.Dir(path)

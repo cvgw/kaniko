@@ -261,23 +261,49 @@ func (s *stageBuilder) build() error {
 			continue
 		}
 
-		tarPath, err := s.takeSnapshot(files)
-		if err != nil {
-			return err
+		fn := func() bool {
+			switch v := command.(type) {
+			case commands.CachedCommand:
+				return v.ReadSuccess()
+			default:
+				return false
+			}
 		}
+		if fn() {
+			v := command.(commands.CachedCommand)
+			layer := v.Layer()
+			if err := s.saveLayerToImage(layer, command.String()); err != nil {
+				return err
+			}
+		} else {
+			tarPath, err := s.takeSnapshot(files)
+			if err != nil {
+				return err
+			}
 
-		ck, err := compositeKey.Hash()
-		if err != nil {
-			return err
-		}
-		// Push layer to cache (in parallel) now along with new config file
-		if s.opts.Cache && command.ShouldCacheOutput() {
-			cacheGroup.Go(func() error {
-				return pushLayerToCache(s.opts, ck, tarPath, command.String())
-			})
-		}
-		if err := s.saveSnapshotToImage(command.String(), tarPath); err != nil {
-			return err
+			ck, err := compositeKey.Hash()
+			if err != nil {
+				return err
+			}
+			// Push layer to cache (in parallel) now along with new config file
+			if s.opts.Cache && command.ShouldCacheOutput() {
+				cacheGroup.Go(func() error {
+					return pushLayerToCache(s.opts, ck, tarPath, command.String())
+				})
+			}
+
+			layer, err := s.saveSnapshotToLayer(tarPath)
+			if err != nil {
+				return err
+			}
+
+			if layer == nil {
+				continue
+			}
+
+			if err := s.saveLayerToImage(layer, command.String()); err != nil {
+				return errors.Wrap(err, "unable to save layer to image")
+			}
 		}
 	}
 	if err := cacheGroup.Wait(); err != nil {
@@ -327,23 +353,27 @@ func (s *stageBuilder) shouldTakeSnapshot(index int, files []string) bool {
 	return true
 }
 
-func (s *stageBuilder) saveSnapshotToImage(createdBy string, tarPath string) error {
+func (s *stageBuilder) saveSnapshotToLayer(tarPath string) (v1.Layer, error) {
 	if tarPath == "" {
-		return nil
+		return nil, nil
 	}
 	fi, err := os.Stat(tarPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if fi.Size() <= emptyTarSize {
 		logrus.Info("No files were changed, appending empty layer to config. No layer added to image.")
-		return nil
+		return nil, nil
 	}
 
 	layer, err := tarball.LayerFromFile(tarPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	return layer, nil
+}
+func (s *stageBuilder) saveLayerToImage(layer v1.Layer, createdBy string) error {
+	var err error
 	s.image, err = mutate.Append(s.image,
 		mutate.Addendum{
 			Layer: layer,

@@ -164,8 +164,9 @@ func (r *RunCommand) FilesToSnapshot() []string {
 func (r *RunCommand) CacheCommand(img v1.Image) DockerCommand {
 
 	return &CachingRunCommand{
-		img: img,
-		cmd: r.cmd,
+		img:       img,
+		cmd:       r.cmd,
+		extractFn: util.ExtractFile,
 	}
 }
 
@@ -183,18 +184,36 @@ func (r *RunCommand) ShouldCacheOutput() bool {
 
 type CachingRunCommand struct {
 	BaseCommand
+	cachingCommand
 	img            v1.Image
 	extractedFiles []string
 	cmd            *instructions.RunCommand
+	extractFn      util.ExtractFunction
 }
 
 func (cr *CachingRunCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
 	logrus.Infof("Found cached layer, extracting to filesystem")
 	var err error
-	cr.extractedFiles, err = util.GetFSFromImage(constants.RootDir, cr.img)
+
+	if cr.img == nil {
+		return errors.New("command image is nil")
+	}
+	layers, err := cr.img.Layers()
+	if err != nil {
+		return err
+	}
+
+	if len(layers) != 1 {
+		return errors.New(fmt.Sprintf("expected %d layers but got %d", 1, len(layers)))
+	}
+	cr.layer = layers[0]
+	cr.readSuccess = true
+
+	cr.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, cr.extractFn)
 	if err != nil {
 		return errors.Wrap(err, "extracting fs from image")
 	}
+
 	return nil
 }
 
