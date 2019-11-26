@@ -31,6 +31,12 @@ type LabelCommand struct {
 }
 
 func (r *LabelCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if r.cached {
+		if err := r.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	return updateLabels(r.cmd.Labels, config, buildArgs)
 }
 

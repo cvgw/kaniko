@@ -1,0 +1,89 @@
+INFO[0004] optimize compositeKey
+{[sha256:64463934b2c542cc5ae132d66a4deae2146e64183343f751a942dc9ede109fd2 RUN
+apk add --no-cache build-base libxml2-dev libxslt-dev graphviz]}
+INFO[0004] Checking for cached layer
+gcr.io/kaniko-dev/issues/cache:255593623740624396088af512e8d34958c35e1adf58ef38c7c9360ad6a08ef5...
+INFO[0005] Using caching version of cmd: RUN apk add --no-cache build-base
+libxml2-dev libxslt-dev graphviz
+INFO[0005] Using files from context: [/workspace/requirements.txt]
+INFO[0005] optimize compositeKey
+{[sha256:64463934b2c542cc5ae132d66a4deae2146e64183343f751a942dc9ede109fd2 COPY
+requirements.txt / JH(Yqr]p
+"M|nY]}
+INFO[0005] Checking for cached layer
+gcr.io/kaniko-dev/issues/cache:6f77248fb9dbda7dde092160911fc1196ad8903f69836b280c74eaa84bc6ef52...
+INFO[0005] No cached layer found for cmd COPY requirements.txt /
+
+
+INFO[0016] from stage 0 manifest &{2
+application/vnd.docker.distribution.manifest.v2+json
+{application/vnd.docker.container.image.v1+json 8924
+sha256:df19a3ec0bffede257e5db892f8096505daf06681d4836d493256352e6ef49aa [] map[]
+<nil>} [{application/vnd.docker.image.rootfs.diff.tar.gzip 2787134
+sha256:89d9c30c1d48bac627e5c6cb0d1ed1eec28e7dbdfbcc04712e4c79c0f83faf17 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 301712
+sha256:910c49c00810270202e88365d51e9aed81dc7afd1be0bdb6b1e6c3d08e85b225 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 28868924
+sha256:7efe415eb85a3d5598db95e8cec5f50685510801c44ac6a3d41934e4fc02b18d [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 231
+sha256:7d8d53519b8117584b98899fafaa879fba74d747bb9f5155b9f459f3b87d59b4 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 1869261
+sha256:519124ac136cdfa993a83f9a1053b7783c1f1912c6ec72278ee26a2464a5e246 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 77249845
+sha256:9a43e6c67e9eceeb6fd7edf60adb6dd6c39d52931aaae5c92bc9017c8707fbc0 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 187
+sha256:c3803242214aa1e358adf9046268fffc9d72d4a947ff9431b5c870b9dfbccd61 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 114925817
+sha256:1a62fb377b35f4e313900e285456b005287c06defbebd2db380b42823213ee46 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 124
+sha256:f39317e4cf680cdad63e9e8985a47967f886048568e588236ccee24672cf50fb [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 3142
+sha256:01e23bddb18757063b13bfce25b65aedb11177fa75cb930211359017c6d5fd6f [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 536549
+sha256:5f6d5b8175cf578be49698f098dcafce09b4b2b508ec05059786212e8da56a69 [] map[]
+<nil>}] map[]}
+
+
+
+INFO[0016] from stage 0 manifest &{2
+application/vnd.docker.distribution.manifest.v2+json
+{application/vnd.docker.container.image.v1+json 8924
+sha256:3919796c95e9b0aa16475837a2291c631d72aa9272f5cd934b2d6ae6d04e1dc1 [] map[]
+<nil>} [{application/vnd.docker.image.rootfs.diff.tar.gzip 2787134
+sha256:89d9c30c1d48bac627e5c6cb0d1ed1eec28e7dbdfbcc04712e4c79c0f83faf17 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 301712
+sha256:910c49c00810270202e88365d51e9aed81dc7afd1be0bdb6b1e6c3d08e85b225 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 28868924
+sha256:7efe415eb85a3d5598db95e8cec5f50685510801c44ac6a3d41934e4fc02b18d [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 231
+sha256:7d8d53519b8117584b98899fafaa879fba74d747bb9f5155b9f459f3b87d59b4 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 1869261
+sha256:519124ac136cdfa993a83f9a1053b7783c1f1912c6ec72278ee26a2464a5e246 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 77249845
+sha256:9a43e6c67e9eceeb6fd7edf60adb6dd6c39d52931aaae5c92bc9017c8707fbc0 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 187
+sha256:c3803242214aa1e358adf9046268fffc9d72d4a947ff9431b5c870b9dfbccd61 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 114925817
+sha256:1a62fb377b35f4e313900e285456b005287c06defbebd2db380b42823213ee46 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 123
+sha256:51c95d940bad69f6abc2e8cc0d471a100e573940028e57ce8234a711eb9a1402 [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 3142
+sha256:01e23bddb18757063b13bfce25b65aedb11177fa75cb930211359017c6d5fd6f [] map[]
+<nil>} {application/vnd.docker.image.rootfs.diff.tar.gzip 536549
+sha256:5f6d5b8175cf578be49698f098dcafce09b4b2b508ec05059786212e8da56a69 [] map[]
+<nil>}] map[]}
+
+
+
+INFO[0012] build compositeKey COPY requirements.txt /
+&{[sha256:64463934b2c542cc5ae132d66a4deae2146e64183343f751a942dc9ede109fd2 RUN
+apk add --no-cache build-base libxml2-dev libxslt-dev graphviz COPY
+requirements.txt /]}
+
+
+INFO[0005] optimize compositeKey COPY requirements.txt /
+{[sha256:64463934b2c542cc5ae132d66a4deae2146e64183343f751a942dc9ede109fd2 RUN
+apk add --no-cache build-base libxml2-dev libxslt-dev graphviz COPY
+requirements.txt / JH(Yqr]p
+"M|nY]}
+

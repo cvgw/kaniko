@@ -30,6 +30,12 @@ type ArgCommand struct {
 
 // ExecuteCommand only needs to add this ARG key/value as seen
 func (r *ArgCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if r.cached {
+		if err := r.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	key, val, err := ParseArg(r.cmd.Key, r.cmd.Value, config.Env, buildArgs)
 	if err != nil {
 		return err

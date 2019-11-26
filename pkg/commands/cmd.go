@@ -33,6 +33,11 @@ type CmdCommand struct {
 // ExecuteCommand executes the CMD command
 // Argument handling is the same as RUN.
 func (c *CmdCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if c.cached {
+		if err := c.setCachedInfo(); err != nil {
+			return err
+		}
+	}
 	var newCommand []string
 	if c.cmd.PrependShell {
 		// This is the default shell on Linux

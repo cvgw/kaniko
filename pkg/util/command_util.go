@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/GoogleContainerTools/kaniko/pkg/constants"
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/moby/buildkit/frontend/dockerfile/shell"
@@ -78,6 +78,9 @@ func ResolveEnvAndWildcards(sd instructions.SourcesAndDest, buildcontext string,
 	resolvedEnvs, err := ResolveEnvironmentReplacementList(sd, envs, true)
 	if err != nil {
 		return nil, "", err
+	}
+	if len(resolvedEnvs) == 0 {
+		return nil, "", errors.New("error resolving environment replacement")
 	}
 	dest := resolvedEnvs[len(resolvedEnvs)-1]
 	// Resolve wildcards and get a list of resolved sources

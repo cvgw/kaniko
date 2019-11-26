@@ -23,7 +23,7 @@ import (
 	"github.com/GoogleContainerTools/kaniko/pkg/dockerfile"
 
 	"github.com/GoogleContainerTools/kaniko/pkg/util"
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/sirupsen/logrus"
 )
@@ -38,6 +38,12 @@ type WorkdirCommand struct {
 var mkdir = os.MkdirAll
 
 func (w *WorkdirCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if w.cached {
+		if err := w.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	logrus.Info("cmd: workdir")
 	workdirPath := w.cmd.Path
 	replacementEnvs := buildArgs.ReplacementEnvs(config.Env)

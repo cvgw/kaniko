@@ -21,7 +21,7 @@ import (
 
 	"github.com/GoogleContainerTools/kaniko/pkg/dockerfile"
 	"github.com/GoogleContainerTools/kaniko/pkg/util"
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/sirupsen/logrus"
 )
@@ -32,6 +32,12 @@ type UserCommand struct {
 }
 
 func (r *UserCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if r.cached {
+		if err := r.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	logrus.Info("cmd: USER")
 	u := r.cmd.User
 	userAndGroup := strings.Split(u, ":")

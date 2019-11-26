@@ -217,7 +217,7 @@ func Test_resolveIfSymlink(t *testing.T) {
 	}
 }
 
-func Test_CachingCopyCommand_ExecuteCommand(t *testing.T) {
+func Test_CopyCommand_ExecuteCommand(t *testing.T) {
 	tarContent, err := prepareTarFixture()
 	if err != nil {
 		t.Errorf("couldn't prepare tar fixture %v", err)
@@ -231,20 +231,27 @@ func Test_CachingCopyCommand_ExecuteCommand(t *testing.T) {
 		expectLayer bool
 		expectErr   bool
 		count       *int
-		command     *CachingCopyCommand
+		command     *CopyCommand
 	}
 	testCases := []testCase{
 		func() testCase {
-			c := &CachingCopyCommand{
-				img: fakeImage{
-					ImageLayers: []v1.Layer{
-						fakeLayer{TarContent: tarContent},
+			sd := make([]string, 0)
+			c := &CopyCommand{
+				cmd: &instructions.CopyCommand{
+					SourcesAndDest: sd,
+				},
+				BaseCommand: BaseCommand{
+					img: fakeImage{
+						ImageLayers: []v1.Layer{
+							fakeLayer{TarContent: tarContent},
+						},
 					},
+					cached: true,
 				},
 			}
 			count := 0
 			tc := testCase{
-				desctiption: "with valid image and valid layer",
+				desctiption: "cached with valid image and valid layer",
 				count:       &count,
 				expectLayer: true,
 			}
@@ -256,35 +263,48 @@ func Test_CachingCopyCommand_ExecuteCommand(t *testing.T) {
 			return tc
 		}(),
 		func() testCase {
-			c := &CachingCopyCommand{}
-			tc := testCase{
-				desctiption: "with no image",
-				expectErr:   true,
-			}
-			tc.command = c
-			return tc
-		}(),
-		func() testCase {
-			c := &CachingCopyCommand{
-				img: fakeImage{},
-			}
-			tc := testCase{
-				desctiption: "with image containing no layers",
-				expectErr:   true,
-			}
-			tc.command = c
-			return tc
-		}(),
-		func() testCase {
-			c := &CachingCopyCommand{
-				img: fakeImage{
-					ImageLayers: []v1.Layer{
-						fakeLayer{},
-					},
+			c := &CopyCommand{
+				cmd: &instructions.CopyCommand{},
+				BaseCommand: BaseCommand{
+					cached: true,
 				},
 			}
 			tc := testCase{
-				desctiption: "with image one layer which has no tar content",
+				desctiption: "cached with no image",
+				expectErr:   true,
+			}
+			tc.command = c
+			return tc
+		}(),
+		func() testCase {
+			c := &CopyCommand{
+				cmd: &instructions.CopyCommand{},
+				BaseCommand: BaseCommand{
+					img:    fakeImage{},
+					cached: true,
+				},
+			}
+			tc := testCase{
+				desctiption: "cached with image containing no layers",
+				expectErr:   true,
+			}
+			tc.command = c
+			return tc
+		}(),
+		func() testCase {
+			c := &CopyCommand{
+				cmd: &instructions.CopyCommand{},
+				BaseCommand: BaseCommand{
+					img: fakeImage{
+						ImageLayers: []v1.Layer{
+							fakeLayer{},
+						},
+					},
+					cached: true,
+				},
+			}
+			tc := testCase{
+				desctiption: "cached with image one layer which has no tar content",
 				expectErr:   false, // this one probably should fail but doesn't because of how ExecuteCommand and util.GetFSFromLayers are implemented - cvgw- 2019-11-25
 				expectLayer: true,
 			}

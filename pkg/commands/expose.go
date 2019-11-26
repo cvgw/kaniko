@@ -34,6 +34,12 @@ type ExposeCommand struct {
 }
 
 func (r *ExposeCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if r.cached {
+		if err := r.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	logrus.Info("cmd: EXPOSE")
 	// Grab the currently exposed ports
 	existingPorts := config.ExposedPorts

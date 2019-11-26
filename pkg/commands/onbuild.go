@@ -30,6 +30,12 @@ type OnBuildCommand struct {
 
 //ExecuteCommand adds the specified expression in Onbuild to the config
 func (o *OnBuildCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if o.cached {
+		if err := o.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	logrus.Info("cmd: ONBUILD")
 	logrus.Infof("args: %s", o.cmd.Expression)
 	if config.OnBuild == nil {

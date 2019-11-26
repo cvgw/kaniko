@@ -23,7 +23,7 @@ import (
 	"github.com/GoogleContainerTools/kaniko/pkg/dockerfile"
 
 	"github.com/GoogleContainerTools/kaniko/pkg/util"
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/sirupsen/logrus"
 )
@@ -34,6 +34,12 @@ type VolumeCommand struct {
 }
 
 func (v *VolumeCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if v.cached {
+		if err := v.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	logrus.Info("cmd: VOLUME")
 	volumes := v.cmd.Volumes
 	replacementEnvs := buildArgs.ReplacementEnvs(config.Env)

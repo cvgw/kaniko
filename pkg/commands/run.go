@@ -69,6 +69,10 @@ func (r *RunCommand) executeCommand(config *v1.Config, buildArgs *dockerfile.Bui
 		newCommand = r.cmd.CmdLine
 	}
 
+	if len(newCommand) == 0 {
+		return errors.New("length of command is zero")
+	}
+
 	logrus.Infof("cmd: %s", newCommand[0])
 	logrus.Infof("args: %s", newCommand[1:])
 

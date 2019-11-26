@@ -29,6 +29,12 @@ type HealthCheckCommand struct {
 
 // ExecuteCommand handles command processing similar to CMD and RUN,
 func (h *HealthCheckCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if h.cached {
+		if err := h.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	check := v1.HealthConfig(*h.cmd.Health)
 	config.Healthcheck = &check
 

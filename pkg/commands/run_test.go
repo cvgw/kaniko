@@ -29,6 +29,7 @@ import (
 	"github.com/GoogleContainerTools/kaniko/pkg/dockerfile"
 	"github.com/GoogleContainerTools/kaniko/testutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 )
 
 func Test_addDefaultHOME(t *testing.T) {
@@ -176,7 +177,7 @@ meow meow meow meow
 	return writer.Bytes(), nil
 }
 
-func Test_CachingRunCommand_ExecuteCommand(t *testing.T) {
+func Test_RunCommand_ExecuteCommand(t *testing.T) {
 	tarContent, err := prepareTarFixture()
 	if err != nil {
 		t.Errorf("couldn't prepare tar fixture %v", err)
@@ -190,20 +191,28 @@ func Test_CachingRunCommand_ExecuteCommand(t *testing.T) {
 		expectLayer bool
 		expectErr   bool
 		count       *int
-		command     *CachingRunCommand
+		command     *RunCommand
 	}
 	testCases := []testCase{
 		func() testCase {
-			c := &CachingRunCommand{
-				img: fakeImage{
-					ImageLayers: []v1.Layer{
-						fakeLayer{TarContent: tarContent},
+			c := &RunCommand{
+				cmd: &instructions.RunCommand{
+					ShellDependantCmdLine: instructions.ShellDependantCmdLine{
+						CmdLine: []string{"sh", "-c", "foo"},
 					},
+				},
+				BaseCommand: BaseCommand{
+					img: fakeImage{
+						ImageLayers: []v1.Layer{
+							fakeLayer{TarContent: tarContent},
+						},
+					},
+					cached: true,
 				},
 			}
 			count := 0
 			tc := testCase{
-				desctiption: "with valid image and valid layer",
+				desctiption: "cached with valid image and valid layer",
 				count:       &count,
 				expectLayer: true,
 			}
@@ -215,35 +224,60 @@ func Test_CachingRunCommand_ExecuteCommand(t *testing.T) {
 			return tc
 		}(),
 		func() testCase {
-			c := &CachingRunCommand{}
-			tc := testCase{
-				desctiption: "with no image",
-				expectErr:   true,
-			}
-			tc.command = c
-			return tc
-		}(),
-		func() testCase {
-			c := &CachingRunCommand{
-				img: fakeImage{},
-			}
-			tc := testCase{
-				desctiption: "with image containing no layers",
-				expectErr:   true,
-			}
-			tc.command = c
-			return tc
-		}(),
-		func() testCase {
-			c := &CachingRunCommand{
-				img: fakeImage{
-					ImageLayers: []v1.Layer{
-						fakeLayer{},
+			c := &RunCommand{
+				cmd: &instructions.RunCommand{
+					ShellDependantCmdLine: instructions.ShellDependantCmdLine{
+						CmdLine: []string{"sh", "-c", "foo"},
 					},
+				},
+				BaseCommand: BaseCommand{
+					cached: true,
 				},
 			}
 			tc := testCase{
-				desctiption: "with image one layer which has no tar content",
+				desctiption: "cached with no image",
+				expectErr:   true,
+			}
+			tc.command = c
+			return tc
+		}(),
+		func() testCase {
+			c := &RunCommand{
+				cmd: &instructions.RunCommand{
+					ShellDependantCmdLine: instructions.ShellDependantCmdLine{
+						CmdLine: []string{"sh", "-c", "foo"},
+					},
+				},
+				BaseCommand: BaseCommand{
+					img:    fakeImage{},
+					cached: true,
+				},
+			}
+			tc := testCase{
+				desctiption: "cached with image containing no layers",
+				expectErr:   true,
+			}
+			tc.command = c
+			return tc
+		}(),
+		func() testCase {
+			c := &RunCommand{
+				cmd: &instructions.RunCommand{
+					ShellDependantCmdLine: instructions.ShellDependantCmdLine{
+						CmdLine: []string{"sh", "-c", "foo"},
+					},
+				},
+				BaseCommand: BaseCommand{
+					img: fakeImage{
+						ImageLayers: []v1.Layer{
+							fakeLayer{},
+						},
+					},
+					cached: true,
+				},
+			}
+			tc := testCase{
+				desctiption: "cached with image one layer which has no tar content",
 				expectErr:   false, // this one probably should fail but doesn't because of how ExecuteCommand and util.GetFSFromLayers are implemented - cvgw- 2019-11-25
 				expectLayer: true,
 			}

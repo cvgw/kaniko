@@ -54,9 +54,6 @@ func (m MockDockerCommand) String() string {
 func (m MockDockerCommand) FilesToSnapshot() []string {
 	return []string{"meow-snapshot-no-cache"}
 }
-func (m MockDockerCommand) CacheCommand(image v1.Image) commands.DockerCommand {
-	return m.cacheCommand
-}
 func (m MockDockerCommand) FilesUsedFromContext(c *v1.Config, args *dockerfile.BuildArgs) ([]string, error) {
 	return m.contextFiles, nil
 }
@@ -69,6 +66,8 @@ func (m MockDockerCommand) RequiresUnpackedFS() bool {
 func (m MockDockerCommand) ShouldCacheOutput() bool {
 	return true
 }
+func (m MockDockerCommand) SetCached(_ bool)    {}
+func (m MockDockerCommand) SetImage(_ v1.Image) {}
 
 type MockCachedDockerCommand struct {
 	contextFiles []string
@@ -83,9 +82,6 @@ func (m MockCachedDockerCommand) String() string {
 func (m MockCachedDockerCommand) FilesToSnapshot() []string {
 	return []string{"meow-snapshot"}
 }
-func (m MockCachedDockerCommand) CacheCommand(image v1.Image) commands.DockerCommand {
-	return nil
-}
 func (m MockCachedDockerCommand) FilesUsedFromContext(c *v1.Config, args *dockerfile.BuildArgs) ([]string, error) {
 	return m.contextFiles, nil
 }
@@ -98,6 +94,8 @@ func (m MockCachedDockerCommand) RequiresUnpackedFS() bool {
 func (m MockCachedDockerCommand) ShouldCacheOutput() bool {
 	return true
 }
+func (m MockCachedDockerCommand) SetCached(_ bool)    {}
+func (m MockCachedDockerCommand) SetImage(_ v1.Image) {}
 
 type fakeLayerCache struct {
 	retrieve bool

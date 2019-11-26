@@ -30,6 +30,12 @@ type EnvCommand struct {
 }
 
 func (e *EnvCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if e.cached {
+		if err := e.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	newEnvs := e.cmd.Env
 	replacementEnvs := buildArgs.ReplacementEnvs(config.Env)
 	return util.UpdateConfigEnv(newEnvs, config, replacementEnvs)

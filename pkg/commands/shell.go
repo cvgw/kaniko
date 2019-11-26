@@ -18,7 +18,7 @@ package commands
 
 import (
 	"github.com/GoogleContainerTools/kaniko/pkg/dockerfile"
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 )
 
@@ -29,6 +29,12 @@ type ShellCommand struct {
 
 // ExecuteCommand handles command processing similar to CMD and RUN,
 func (s *ShellCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if s.cached {
+		if err := s.setCachedInfo(); err != nil {
+			return err
+		}
+	}
+
 	config.Shell = s.cmd.Shell
 	return nil
 }
