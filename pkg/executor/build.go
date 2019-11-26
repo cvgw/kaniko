@@ -471,6 +471,13 @@ func DoBuild(opts *config.KanikoOptions) (v1.Image, error) {
 				}
 			}
 			timing.DefaultRun.Stop(t)
+
+			d, err := sourceImage.Digest()
+			if err != nil {
+				return nil, err
+			}
+
+			logrus.Infof("stage %v with digest %v", stage.Index, d)
 			return sourceImage, nil
 		}
 		if stage.SaveStage {
