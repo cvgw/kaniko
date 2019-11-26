@@ -16,6 +16,7 @@ limitations under the License.
 package commands
 
 import (
+	"archive/tar"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -211,6 +212,109 @@ func Test_resolveIfSymlink(t *testing.T) {
 
 			if res != c.expectedPath {
 				t.Errorf("%s: expected %v but got %v", c.destPath, c.expectedPath, res)
+			}
+		})
+	}
+}
+
+func Test_CachingCopyCommand_ExecuteCommand(t *testing.T) {
+	tarContent, err := prepareTarFixture()
+	if err != nil {
+		t.Errorf("couldn't prepare tar fixture %v", err)
+	}
+
+	config := &v1.Config{}
+	buildArgs := &dockerfile.BuildArgs{}
+
+	type testCase struct {
+		desctiption string
+		expectLayer bool
+		expectErr   bool
+		count       *int
+		command     *CachingCopyCommand
+	}
+	testCases := []testCase{
+		func() testCase {
+			c := &CachingCopyCommand{
+				img: fakeImage{
+					ImageLayers: []v1.Layer{
+						fakeLayer{TarContent: tarContent},
+					},
+				},
+			}
+			count := 0
+			tc := testCase{
+				desctiption: "with valid image and valid layer",
+				count:       &count,
+				expectLayer: true,
+			}
+			c.extractFn = func(_ string, _ *tar.Header, _ io.Reader) error {
+				*tc.count++
+				return nil
+			}
+			tc.command = c
+			return tc
+		}(),
+		func() testCase {
+			c := &CachingCopyCommand{}
+			tc := testCase{
+				desctiption: "with no image",
+				expectErr:   true,
+			}
+			tc.command = c
+			return tc
+		}(),
+		func() testCase {
+			c := &CachingCopyCommand{
+				img: fakeImage{},
+			}
+			tc := testCase{
+				desctiption: "with image containing no layers",
+				expectErr:   true,
+			}
+			tc.command = c
+			return tc
+		}(),
+		func() testCase {
+			c := &CachingCopyCommand{
+				img: fakeImage{
+					ImageLayers: []v1.Layer{
+						fakeLayer{},
+					},
+				},
+			}
+			tc := testCase{
+				desctiption: "with image one layer which has no tar content",
+				expectErr:   false, // this one probably should fail but doesn't because of how ExecuteCommand and util.GetFSFromLayers are implemented - cvgw- 2019-11-25
+				expectLayer: true,
+			}
+			tc.command = c
+			return tc
+		}(),
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desctiption, func(t *testing.T) {
+			c := tc.command
+			err := c.ExecuteCommand(config, buildArgs)
+			if !tc.expectErr && err != nil {
+				t.Errorf("Expected err to be nil but was %v", err)
+			} else if tc.expectErr && err == nil {
+				t.Error("Expected err but was nil")
+			}
+
+			if tc.count != nil && *tc.count != 1 {
+				t.Errorf("Expected extractFn to be called %v times but was called %v times", 1, *tc.count)
+			}
+
+			if c.layer == nil && tc.expectLayer {
+				t.Error("expected the command to have a layer set but instead was nil")
+			} else if c.layer != nil && !tc.expectLayer {
+				t.Error("expected the command to have no layer set but instead found a layer")
+			}
+
+			if c.readSuccess != tc.expectLayer {
+				t.Errorf("expected read success to be %v but was %v", tc.expectLayer, c.readSuccess)
 			}
 		})
 	}

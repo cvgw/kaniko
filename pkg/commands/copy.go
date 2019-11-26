@@ -17,6 +17,7 @@ limitations under the License.
 package commands
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -156,22 +157,40 @@ func (c *CopyCommand) ShouldCacheOutput() bool {
 func (c *CopyCommand) CacheCommand(img v1.Image) DockerCommand {
 
 	return &CachingCopyCommand{
-		img: img,
-		cmd: c.cmd,
+		img:       img,
+		cmd:       c.cmd,
+		extractFn: util.ExtractFile,
 	}
 }
 
 type CachingCopyCommand struct {
 	BaseCommand
+	cachingCommand
 	img            v1.Image
 	extractedFiles []string
 	cmd            *instructions.CopyCommand
+	extractFn      util.ExtractFunction
 }
 
 func (cr *CachingCopyCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
 	logrus.Infof("Found cached layer, extracting to filesystem")
 	var err error
-	cr.extractedFiles, err = util.GetFSFromImage(constants.RootDir, cr.img)
+
+	if cr.img == nil {
+		return errors.New("command image is nil")
+	}
+	layers, err := cr.img.Layers()
+	if err != nil {
+		return err
+	}
+
+	if len(layers) != 1 {
+		return errors.New(fmt.Sprintf("expected %d layers but got %d", 1, len(layers)))
+	}
+	cr.layer = layers[0]
+	cr.readSuccess = true
+
+	cr.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, cr.extractFn)
 	logrus.Infof("extractedFiles: %s", cr.extractedFiles)
 	if err != nil {
 		return errors.Wrap(err, "extracting fs from image")
