@@ -17,6 +17,7 @@ limitations under the License.
 package executor
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/GoogleContainerTools/kaniko/pkg/commands"
 	"github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/GoogleContainerTools/kaniko/pkg/dockerfile"
 	"github.com/GoogleContainerTools/kaniko/testutil"
@@ -460,5 +462,102 @@ func TestInitializeConfig(t *testing.T) {
 		}
 		actual, _ := initializeConfig(img)
 		testutil.CheckDeepEqual(t, tt.expected, actual.Config)
+	}
+}
+
+func Test_stageBuilder_optimize(t *testing.T) {
+	testCases := []struct {
+		opts     *config.KanikoOptions
+		retrieve bool
+		name     string
+	}{
+		{
+			name: "cache enabled and layer not present in cache",
+			opts: &config.KanikoOptions{Cache: true},
+		},
+		{
+			name:     "cache enabled and layer present in cache",
+			opts:     &config.KanikoOptions{Cache: true},
+			retrieve: true,
+		},
+		{
+			name: "cache disabled and layer not present in cache",
+			opts: &config.KanikoOptions{Cache: false},
+		},
+		{
+			name:     "cache disabled and layer present in cache",
+			opts:     &config.KanikoOptions{Cache: false},
+			retrieve: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cf := &v1.ConfigFile{}
+			snap := fakeSnapShotter{}
+			lc := fakeLayerCache{retrieve: tc.retrieve}
+			sb := &stageBuilder{opts: tc.opts, cf: cf, snapshotter: snap, layerCache: lc}
+			ck := CompositeCache{}
+			file, err := ioutil.TempFile("", "foo")
+			if err != nil {
+				t.Error(err)
+			}
+			command := MockDockerCommand{
+				contextFiles: []string{file.Name()},
+				cacheCommand: MockCachedDockerCommand{},
+			}
+			sb.cmds = []commands.DockerCommand{command}
+			err = sb.optimize(ck, cf.Config)
+			if err != nil {
+				t.Errorf("Expected error to be nil but was %v", err)
+			}
+
+		})
+	}
+}
+
+func Test_stageBuilder_build(t *testing.T) {
+	testCases := []struct {
+		opts     *config.KanikoOptions
+		retrieve bool
+	}{
+		{
+			opts: &config.KanikoOptions{Cache: true},
+		},
+		{
+			opts:     &config.KanikoOptions{Cache: true},
+			retrieve: true,
+		},
+		{
+			opts: &config.KanikoOptions{Cache: false},
+		},
+		{
+			opts:     &config.KanikoOptions{Cache: false},
+			retrieve: true,
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("Case %d", i), func(t *testing.T) {
+			file, err := ioutil.TempFile("", "foo")
+			if err != nil {
+				t.Error(err)
+			}
+
+			cf := &v1.ConfigFile{}
+			snap := fakeSnapShotter{file: file.Name()}
+			lc := fakeLayerCache{retrieve: tc.retrieve}
+			sb := &stageBuilder{opts: tc.opts, cf: cf, snapshotter: snap, layerCache: lc, pushCache: fakeCachePush}
+
+			command := MockDockerCommand{
+				contextFiles: []string{file.Name()},
+				cacheCommand: MockCachedDockerCommand{
+					contextFiles: []string{file.Name()},
+				},
+			}
+			sb.cmds = []commands.DockerCommand{command}
+			err = sb.build()
+			if err != nil {
+				t.Errorf("Expected error to be nil but was %v", err)
+			}
+		})
 	}
 }
