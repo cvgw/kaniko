@@ -48,6 +48,10 @@ type DockerCommand interface {
 	RequiresUnpackedFS() bool
 
 	ShouldCacheOutput() bool
+
+	SetCached(bool)
+
+	SetImage(v1.Image)
 }
 
 func GetCommand(cmd instructions.Command, buildcontext string) (DockerCommand, error) {

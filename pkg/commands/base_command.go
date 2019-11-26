@@ -17,11 +17,54 @@ limitations under the License.
 package commands
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/GoogleContainerTools/kaniko/pkg/dockerfile"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/sirupsen/logrus"
 )
 
 type BaseCommand struct {
+	cached bool
+	cachingCommand
+	img v1.Image
+}
+
+func (b *BaseCommand) SetCached(cached bool) {
+	b.cached = cached
+}
+
+func (b *BaseCommand) SetImage(image v1.Image) {
+	b.img = image
+}
+
+func (b *BaseCommand) ExecuteCommand(config *v1.Config, buildsArgs *dockerfile.BuildArgs) error {
+	if c.cached {
+		b.setCachedInfo()
+	}
+	b.execu
+}
+
+func (b *BaseCommand) setCachedInfo(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	logrus.Infof("Found cached layer")
+	var err error
+
+	if b.img == nil {
+		return errors.New("command image is nil")
+	}
+	layers, err := b.img.Layers()
+	if err != nil {
+		return err
+	}
+
+	if len(layers) != 1 {
+		return errors.New(fmt.Sprintf("expected %d layers but got %d", 1, len(layers)))
+	}
+	b.layer = layers[0]
+	b.readSuccess = true
+
+	return nil
 }
 
 func (b *BaseCommand) CacheCommand(v1.Image) DockerCommand {
@@ -45,5 +88,5 @@ func (b *BaseCommand) RequiresUnpackedFS() bool {
 }
 
 func (b *BaseCommand) ShouldCacheOutput() bool {
-	return false
+	return true
 }

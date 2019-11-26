@@ -36,7 +36,9 @@ import (
 
 type RunCommand struct {
 	BaseCommand
-	cmd *instructions.RunCommand
+	cmd            *instructions.RunCommand
+	extractedFiles []string
+	extractFn      util.ExtractFunction
 }
 
 // for testing
@@ -45,6 +47,13 @@ var (
 )
 
 func (r *RunCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if !r.cached {
+		return r.executeCommand(config, buildArgs)
+	}
+	return r.executeCachedCommand(config, buildArgs)
+}
+
+func (r *RunCommand) executeCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
 	var newCommand []string
 	if r.cmd.PrependShell {
 		// This is the default shell on Linux
@@ -117,6 +126,35 @@ func (r *RunCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.Bui
 	//it's not an error if there are no grandchildren
 	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil && err.Error() != "no such process" {
 		return err
+	}
+
+	return nil
+}
+
+func (c *RunCommand) executeCachedCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	logrus.Infof("Found cached layer, extracting to filesystem")
+	var err error
+
+	if c.img == nil {
+		return errors.New("command image is nil")
+	}
+	layers, err := c.img.Layers()
+	if err != nil {
+		return err
+	}
+
+	if len(layers) != 1 {
+		return errors.New(fmt.Sprintf("expected %d layers but got %d", 1, len(layers)))
+	}
+	c.layer = layers[0]
+	c.readSuccess = true
+
+	if c.extractFn == nil {
+		c.extractFn = util.ExtractFile
+	}
+	c.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, c.extractFn)
+	if err != nil {
+		return errors.Wrap(err, "extracting fs from image")
 	}
 
 	return nil

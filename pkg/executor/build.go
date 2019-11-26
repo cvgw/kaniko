@@ -186,7 +186,7 @@ func (s *stageBuilder) optimize(compositeKey CompositeCache, cfg v1.Config) erro
 	// We walk through all the commands, running any commands that only operate on metadata.
 	// We throw the metadata away after, but we need it to properly track command dependencies
 	// for things like COPY ${FOO} or RUN commands that use environment variables.
-	for i, command := range s.cmds {
+	for _, command := range s.cmds {
 		if command == nil {
 			continue
 		}
@@ -200,6 +200,7 @@ func (s *stageBuilder) optimize(compositeKey CompositeCache, cfg v1.Config) erro
 			return err
 		}
 
+		logrus.Infof("optimize compositeKey %v %v", command.String(), compositeKey)
 		ck, err := compositeKey.Hash()
 		if err != nil {
 			return err
@@ -213,10 +214,13 @@ func (s *stageBuilder) optimize(compositeKey CompositeCache, cfg v1.Config) erro
 				break
 			}
 
-			if cacheCmd := command.CacheCommand(img); cacheCmd != nil {
-				logrus.Infof("Using caching version of cmd: %s", command.String())
-				s.cmds[i] = cacheCmd
-			}
+			logrus.Infof("Using caching version of cmd: %s", command.String())
+			command.SetCached(true)
+			command.SetImage(img)
+			//if cacheCmd := command.CacheCommand(img); cacheCmd != nil {
+			//        logrus.Infof("Using caching version of cmd: %s", command.String())
+			//        s.cmds[i] = cacheCmd
+			//}
 		}
 
 		// Mutate the config for any commands that require it.
@@ -523,11 +527,16 @@ func DoBuild(opts *config.KanikoOptions) (v1.Image, error) {
 			return nil, errors.Wrap(err, "error building stage")
 		}
 
+		m, err := sb.image.Manifest()
+		if err != nil {
+			return nil, err
+		}
+		logrus.Infof("from stage %v manifest %v", sb.stage.Index, m)
 		d, err := sb.image.Digest()
 		if err != nil {
 			return nil, err
 		}
-
+		logrus.Infof("stage %v digest %v", sb.stage.Index, d)
 		digestMap[fmt.Sprintf("%d", sb.stage.Index)] = d
 
 		reviewConfig(stage, &sb.cf.Config)

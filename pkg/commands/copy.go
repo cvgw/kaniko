@@ -110,6 +110,35 @@ func (c *CopyCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.Bu
 	return nil
 }
 
+func (c *CopyCommand) executeCachedCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	logrus.Infof("Found cached layer, extracting to filesystem")
+	var err error
+
+	if c.img == nil {
+		return errors.New("command image is nil")
+	}
+	layers, err := c.img.Layers()
+	if err != nil {
+		return err
+	}
+
+	if len(layers) != 1 {
+		return errors.New(fmt.Sprintf("expected %d layers but got %d", 1, len(layers)))
+	}
+	c.layer = layers[0]
+	c.readSuccess = true
+
+	if c.extractFn == nil {
+		c.extractFn = util.ExtractFile
+	}
+	c.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, c.extractFn)
+	logrus.Infof("extractedFiles: %s", c.extractedFiles)
+	if err != nil {
+		return errors.Wrap(err, "extracting fs from image")
+	}
+	return nil
+}
+
 // FilesToSnapshot should return an empty array if still nil; no files were changed
 func (c *CopyCommand) FilesToSnapshot() []string {
 	return c.snapshotFiles
@@ -208,10 +237,6 @@ func (cr *CachingCopyCommand) FilesToSnapshot() []string {
 
 func (cr *CachingCopyCommand) String() string {
 	return cr.cmd.String()
-}
-
-func (cr *CachingCopyCommand) From() string {
-	return cr.cmd.From
 }
 
 func resolveIfSymlink(destPath string) (string, error) {
