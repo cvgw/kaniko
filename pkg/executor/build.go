@@ -52,18 +52,27 @@ import (
 // This is the size of an empty tar in Go
 const emptyTarSize = 1024
 
+type cachePusher func(*config.KanikoOptions, string, string, string) error
+type snapShotter interface {
+	Init() error
+	TakeSnapshotFS() (string, error)
+	TakeSnapshot([]string) (string, error)
+}
+
 // stageBuilder contains all fields necessary to build one stage of a Dockerfile
 type stageBuilder struct {
 	stage           config.KanikoStage
 	image           v1.Image
 	cf              *v1.ConfigFile
-	snapshotter     *snapshot.Snapshotter
+	snapshotter     snapShotter
 	baseImageDigest string
 	opts            *config.KanikoOptions
 	cmds            []commands.DockerCommand
 	args            *dockerfile.BuildArgs
 	crossStageDeps  map[int][]string
 	digestMap       map[string]v1.Hash
+	layerCache      cache.LayerCache
+	pushCache       cachePusher
 }
 
 // newStageBuilder returns a new type stageBuilder which contains all the information required to build the stage
@@ -101,7 +110,11 @@ func newStageBuilder(opts *config.KanikoOptions, stage config.KanikoStage, cross
 		baseImageDigest: digest.String(),
 		opts:            opts,
 		crossStageDeps:  crossStageDeps,
-		digestMap:       dm,
+		layerCache: &cache.RegistryCache{
+			Opts: opts,
+		},
+		pushCache: pushLayerToCache,
+		digestMap: dm,
 	}
 
 	for _, cmd := range s.stage.Commands {
@@ -169,10 +182,6 @@ func (s *stageBuilder) optimize(compositeKey CompositeCache, cfg v1.Config) erro
 		return nil
 	}
 
-	layerCache := &cache.RegistryCache{
-		Opts: s.opts,
-	}
-
 	// Possibly replace commands with their cached implementations.
 	// We walk through all the commands, running any commands that only operate on metadata.
 	// We throw the metadata away after, but we need it to properly track command dependencies
@@ -196,7 +205,7 @@ func (s *stageBuilder) optimize(compositeKey CompositeCache, cfg v1.Config) erro
 			return err
 		}
 		if command.ShouldCacheOutput() {
-			img, err := layerCache.RetrieveLayer(ck)
+			img, err := s.layerCache.RetrieveLayer(ck)
 			if err != nil {
 				logrus.Debugf("Failed to retrieve layer: %s", err)
 				logrus.Infof("No cached layer found for cmd %s", command.String())
@@ -304,7 +313,7 @@ func (s *stageBuilder) build() error {
 		// Push layer to cache (in parallel) now along with new config file
 		if s.opts.Cache && command.ShouldCacheOutput() {
 			cacheGroup.Go(func() error {
-				return pushLayerToCache(s.opts, ck, tarPath, command.String())
+				return s.pushCache(s.opts, ck, tarPath, command.String())
 			})
 		}
 		if err := s.saveSnapshotToImage(command.String(), tarPath); err != nil {
