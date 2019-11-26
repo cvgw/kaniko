@@ -158,15 +158,6 @@ func (s *stageBuilder) populateCompositeKey(command commands.DockerCommand, file
 				compositeKey.AddKey(ds)
 			}
 		}
-	case *commands.CachingCopyCommand:
-		if v.From() != "" {
-			digest, ok := s.digestMap[v.From()]
-			if ok {
-				ds := digest.String()
-				logrus.Debugf("adding digest %v from previous stage to composite key for %v", ds, command.String())
-				compositeKey.AddKey(ds)
-			}
-		}
 	}
 
 	for _, f := range files {
@@ -214,13 +205,14 @@ func (s *stageBuilder) optimize(compositeKey CompositeCache, cfg v1.Config) erro
 				break
 			}
 
+			if img == nil {
+				logrus.Infof("image return from cache for command %v was nil", command.String())
+				break
+			}
+
 			logrus.Infof("Using caching version of cmd: %s", command.String())
 			command.SetCached(true)
 			command.SetImage(img)
-			//if cacheCmd := command.CacheCommand(img); cacheCmd != nil {
-			//        logrus.Infof("Using caching version of cmd: %s", command.String())
-			//        s.cmds[i] = cacheCmd
-			//}
 		}
 
 		// Mutate the config for any commands that require it.

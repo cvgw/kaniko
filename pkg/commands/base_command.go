@@ -39,13 +39,6 @@ func (b *BaseCommand) SetImage(image v1.Image) {
 	b.img = image
 }
 
-func (b *BaseCommand) ExecuteCommand(config *v1.Config, buildsArgs *dockerfile.BuildArgs) error {
-	if c.cached {
-		b.setCachedInfo()
-	}
-	b.execu
-}
-
 func (b *BaseCommand) setCachedInfo(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
 	logrus.Infof("Found cached layer")
 	var err error
@@ -88,5 +81,5 @@ func (b *BaseCommand) RequiresUnpackedFS() bool {
 }
 
 func (b *BaseCommand) ShouldCacheOutput() bool {
-	return true
+	return false
 }

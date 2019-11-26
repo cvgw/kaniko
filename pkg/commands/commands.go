@@ -37,9 +37,6 @@ type DockerCommand interface {
 	// A list of files to snapshot, empty for metadata commands or nil if we don't know
 	FilesToSnapshot() []string
 
-	// Return a cache-aware implementation of this command, if it exists.
-	CacheCommand(v1.Image) DockerCommand
-
 	// Return true if this command depends on the build context.
 	FilesUsedFromContext(*v1.Config, *dockerfile.BuildArgs) ([]string, error)
 

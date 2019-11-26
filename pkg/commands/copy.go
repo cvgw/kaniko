@@ -34,12 +34,21 @@ import (
 
 type CopyCommand struct {
 	BaseCommand
-	cmd           *instructions.CopyCommand
-	buildcontext  string
-	snapshotFiles []string
+	cmd            *instructions.CopyCommand
+	buildcontext   string
+	snapshotFiles  []string
+	extractFn      util.ExtractFunction
+	extractedFiles []string
 }
 
 func (c *CopyCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
+	if !c.cached {
+		return c.executeCommand(config, buildArgs)
+	}
+	return c.executeCachedCommand(config, buildArgs)
+}
+
+func (c *CopyCommand) executeCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
 	// Resolve from
 	if c.cmd.From != "" {
 		c.buildcontext = filepath.Join(constants.KanikoDir, c.cmd.From)
@@ -115,7 +124,7 @@ func (c *CopyCommand) executeCachedCommand(config *v1.Config, buildArgs *dockerf
 	var err error
 
 	if c.img == nil {
-		return errors.New("command image is nil")
+		return errors.New(fmt.Sprintf("command %v image is nil", c.cmd.String()))
 	}
 	layers, err := c.img.Layers()
 	if err != nil {
@@ -128,10 +137,11 @@ func (c *CopyCommand) executeCachedCommand(config *v1.Config, buildArgs *dockerf
 	c.layer = layers[0]
 	c.readSuccess = true
 
-	if c.extractFn == nil {
-		c.extractFn = util.ExtractFile
+	extractFn := c.extractFn
+	if extractFn == nil {
+		extractFn = util.ExtractFile
 	}
-	c.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, c.extractFn)
+	c.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, extractFn)
 	logrus.Infof("extractedFiles: %s", c.extractedFiles)
 	if err != nil {
 		return errors.Wrap(err, "extracting fs from image")
@@ -182,61 +192,8 @@ func (c *CopyCommand) ShouldCacheOutput() bool {
 	return true
 }
 
-// CacheCommand returns true since this command should be cached
-func (c *CopyCommand) CacheCommand(img v1.Image) DockerCommand {
-
-	return &CachingCopyCommand{
-		img:       img,
-		cmd:       c.cmd,
-		extractFn: util.ExtractFile,
-	}
-}
-
 func (c *CopyCommand) From() string {
 	return c.cmd.From
-}
-
-type CachingCopyCommand struct {
-	BaseCommand
-	cachingCommand
-	img            v1.Image
-	extractedFiles []string
-	cmd            *instructions.CopyCommand
-	extractFn      util.ExtractFunction
-}
-
-func (cr *CachingCopyCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
-	logrus.Infof("Found cached layer, extracting to filesystem")
-	var err error
-
-	if cr.img == nil {
-		return errors.New("command image is nil")
-	}
-	layers, err := cr.img.Layers()
-	if err != nil {
-		return err
-	}
-
-	if len(layers) != 1 {
-		return errors.New(fmt.Sprintf("expected %d layers but got %d", 1, len(layers)))
-	}
-	cr.layer = layers[0]
-	cr.readSuccess = true
-
-	cr.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, cr.extractFn)
-	logrus.Infof("extractedFiles: %s", cr.extractedFiles)
-	if err != nil {
-		return errors.Wrap(err, "extracting fs from image")
-	}
-	return nil
-}
-
-func (cr *CachingCopyCommand) FilesToSnapshot() []string {
-	return cr.extractedFiles
-}
-
-func (cr *CachingCopyCommand) String() string {
-	return cr.cmd.String()
 }
 
 func resolveIfSymlink(destPath string) (string, error) {

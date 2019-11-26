@@ -136,7 +136,7 @@ func (c *RunCommand) executeCachedCommand(config *v1.Config, buildArgs *dockerfi
 	var err error
 
 	if c.img == nil {
-		return errors.New("command image is nil")
+		return errors.New(fmt.Sprintf("command %v image is nil", c.cmd.String()))
 	}
 	layers, err := c.img.Layers()
 	if err != nil {
@@ -198,16 +198,6 @@ func (r *RunCommand) FilesToSnapshot() []string {
 	return nil
 }
 
-// CacheCommand returns true since this command should be cached
-func (r *RunCommand) CacheCommand(img v1.Image) DockerCommand {
-
-	return &CachingRunCommand{
-		img:       img,
-		cmd:       r.cmd,
-		extractFn: util.ExtractFile,
-	}
-}
-
 func (r *RunCommand) MetadataOnly() bool {
 	return false
 }
@@ -218,47 +208,4 @@ func (r *RunCommand) RequiresUnpackedFS() bool {
 
 func (r *RunCommand) ShouldCacheOutput() bool {
 	return true
-}
-
-type CachingRunCommand struct {
-	BaseCommand
-	cachingCommand
-	img            v1.Image
-	extractedFiles []string
-	cmd            *instructions.RunCommand
-	extractFn      util.ExtractFunction
-}
-
-func (cr *CachingRunCommand) ExecuteCommand(config *v1.Config, buildArgs *dockerfile.BuildArgs) error {
-	logrus.Infof("Found cached layer, extracting to filesystem")
-	var err error
-
-	if cr.img == nil {
-		return errors.New("command image is nil")
-	}
-	layers, err := cr.img.Layers()
-	if err != nil {
-		return err
-	}
-
-	if len(layers) != 1 {
-		return errors.New(fmt.Sprintf("expected %d layers but got %d", 1, len(layers)))
-	}
-	cr.layer = layers[0]
-	cr.readSuccess = true
-
-	cr.extractedFiles, err = util.GetFSFromLayers(constants.RootDir, layers, cr.extractFn)
-	if err != nil {
-		return errors.Wrap(err, "extracting fs from image")
-	}
-
-	return nil
-}
-
-func (cr *CachingRunCommand) FilesToSnapshot() []string {
-	return cr.extractedFiles
-}
-
-func (cr *CachingRunCommand) String() string {
-	return cr.cmd.String()
 }
