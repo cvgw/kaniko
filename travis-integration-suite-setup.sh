@@ -15,11 +15,16 @@
 
 set -ex
 
-GCS_BUCKET="${GCS_BUCKET:-gs://kaniko-test-bucket}"
-IMAGE_REPO="${IMAGE_REPO:-gcr.io/kaniko-test}"
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 
-echo "Running integration tests..."
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
-make out/executor
-make out/warmer
-go test ./integration/... -v --bucket "${GCS_BUCKET}" --repo "${IMAGE_REPO}" --timeout 50m "$@"
+sudo apt-get update
+
+sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
+
+curl -LO https://storage.googleapis.com/container-diff/latest/container-diff-linux-amd64 && chmod +x container-diff-linux-amd64 && sudo mv container-diff-linux-amd64 /usr/local/bin/container-diff
+
+docker run -d -p 5000:5000 --restart always --name registry registry:2
+
+./setup-integration-suite.sh
