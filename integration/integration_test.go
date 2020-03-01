@@ -32,14 +32,14 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
-	"golang.org/x/sync/errgroup"
+	"github.com/sirupsen/logrus"
 
 	"github.com/GoogleContainerTools/kaniko/pkg/timing"
 	"github.com/GoogleContainerTools/kaniko/pkg/util"
 	"github.com/GoogleContainerTools/kaniko/testutil"
 )
 
-var config = initGCPConfig()
+var config *gcpConfig
 var imageBuilder *DockerFileBuilder
 
 type gcpConfig struct {
@@ -116,6 +116,8 @@ func meetsRequirements() bool {
 }
 
 func TestMain(m *testing.M) {
+	config = initGCPConfig()
+
 	if !meetsRequirements() {
 		fmt.Println("Missing required tools")
 		os.Exit(1)
@@ -188,17 +190,17 @@ func TestMain(m *testing.M) {
 	}
 	imageBuilder = NewDockerFileBuilder(dockerfiles)
 
-	g := errgroup.Group{}
-	for dockerfile := range imageBuilder.FilesBuilt {
-		df := dockerfile
-		g.Go(func() error {
-			return imageBuilder.BuildImage(config.imageRepo, config.gcsBucket, dockerfilesPath, df)
-		})
-	}
-	if err := g.Wait(); err != nil {
-		fmt.Printf("Error building images: %s", err)
-		os.Exit(1)
-	}
+	//g := errgroup.Group{}
+	//for dockerfile := range imageBuilder.FilesBuilt {
+	//        df := dockerfile
+	//        g.Go(func() error {
+	//                return imageBuilder.BuildImage(config.imageRepo, config.gcsBucket, dockerfilesPath, df)
+	//        })
+	//}
+	//if err := g.Wait(); err != nil {
+	//        fmt.Printf("Error building images: %s", err)
+	//        os.Exit(1)
+	//}
 	os.Exit(m.Run())
 }
 func TestRun(t *testing.T) {
@@ -384,6 +386,42 @@ func TestCache(t *testing.T) {
 	if err := logBenchmarks("benchmark_cache"); err != nil {
 		t.Logf("Failed to create benchmark file: %v", err)
 	}
+}
+
+func TestRelativePaths(t *testing.T) {
+
+	dockerfile := "Dockerfile_copy"
+
+	logrus.SetLevel(logrus.DebugLevel)
+
+	t.Run("test_relative_"+dockerfile, func(t *testing.T) {
+		t.Parallel()
+
+		contextPath := "./context"
+
+		err := imageBuilder.buildRelativePathsImage(
+			config.imageRepo,
+			filepath.Join("./dockerfiles", dockerfile), //dockerfile path is relative to the workspace path
+			contextPath,
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		dockerImage := GetDockerImage(config.imageRepo, dockerfile)
+		kanikoImage := GetKanikoImage(config.imageRepo, dockerfile)
+		// container-diff
+		containerdiffCmd := exec.Command("container-diff", "diff",
+			daemonPrefix+dockerImage, kanikoImage,
+			"-q", "--type=file", "--type=metadata", "--json", "--no-cache")
+
+		diff := RunCommand(containerdiffCmd, t)
+		t.Logf("diff = %s", diff)
+
+		expected := fmt.Sprintf(emptyContainerDiff, dockerImage, kanikoImage, dockerImage, kanikoImage)
+		checkContainerDiffOutput(t, diff, expected)
+	})
 }
 
 type fileDiff struct {
