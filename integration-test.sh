@@ -36,4 +36,4 @@ echo "Running integration tests..."
 make out/executor
 make out/warmer
 pushd integration
-go test -v --bucket "${GCS_BUCKET}" --repo "${IMAGE_REPO}" --timeout 30m
+go test -v --bucket "${GCS_BUCKET}" --repo "${IMAGE_REPO}" --timeout 30m -run TestRelative

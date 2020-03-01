@@ -288,11 +288,10 @@ func (d *DockerFileBuilder) buildCachedImages(imageRepo, cacheRepo, dockerfilesP
 }
 
 // buildRelativePathsImage builds the images for testing passing relatives paths to Kaniko
-func (d *DockerFileBuilder) buildRelativePathsImage(imageRepo, dockerfile string) error {
+func (d *DockerFileBuilder) buildRelativePathsImage(imageRepo, dockerfile, buildContextPath string) error {
 	_, ex, _, _ := runtime.Caller(0)
 	cwd := filepath.Dir(ex)
 
-	buildContextPath := "./relative-subdirectory"
 	kanikoImage := GetKanikoImage(imageRepo, dockerfile)
 
 	kanikoCmd := exec.Command("docker",
@@ -308,11 +307,15 @@ func (d *DockerFileBuilder) buildRelativePathsImage(imageRepo, dockerfile string
 	)
 
 	timer := timing.Start(dockerfile + "_kaniko_relative_paths")
-	_, err := RunCommandWithoutTest(kanikoCmd)
+	out, err := RunCommandWithoutTest(kanikoCmd)
 	timing.DefaultRun.Stop(timer)
 	if err != nil {
+		fmt.Println(kanikoCmd.String())
+		fmt.Println(string(out))
 		return fmt.Errorf("Failed to build relative path image %s with kaniko command \"%s\": %s", kanikoImage, kanikoCmd.Args, err)
 	}
 
+	fmt.Println(kanikoCmd.String())
+	fmt.Println(string(out))
 	return nil
 }
